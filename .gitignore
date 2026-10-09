@@ -1,0 +1,6 @@
+.venv/
+build/
+llama.cpp/
+__pycache__/
+*.log
+*.gguf

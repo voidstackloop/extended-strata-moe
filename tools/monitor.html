@@ -1,0 +1,374 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MoE Cache Monitor</title>
+<!--
+  tools/monitor.html - a live view of llama.cpp's MoE cache (strata-moe branch), read from llama-server's /metrics.
+  Start llama-server with --metrics, serve this directory from localhost (llama-server answers localhost origins):
+      python3 -m http.server -d tools 8090
+  and open http://127.0.0.1:8090/monitor.html?server=http://127.0.0.1:8080
+-->
+<style>
+  :root {
+    color-scheme: light;
+    --page: #f9f9f7; --surface: #fcfcfb; --border: rgba(11,11,11,0.10);
+    --text-primary: #0b0b0b; --text-secondary: #52514e; --text-muted: #898781;
+    --grid: #e1e0d9; --axis: #c3c2b7;
+    --series-1: #2a78d6; --series-2: #eb6834; --neutral: #c3c2b7;
+    --good: #0ca30c; --warning: #fab219; --critical: #d03b3b;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      color-scheme: dark;
+      --page: #0d0d0d; --surface: #1a1a19; --border: rgba(255,255,255,0.10);
+      --text-primary: #ffffff; --text-secondary: #c3c2b7; --text-muted: #898781;
+      --grid: #2c2c2a; --axis: #383835;
+      --series-1: #3987e5; --series-2: #d95926; --neutral: #4a4a46;
+    }
+  }
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --page: #0d0d0d; --surface: #1a1a19; --border: rgba(255,255,255,0.10);
+    --text-primary: #ffffff; --text-secondary: #c3c2b7; --text-muted: #898781;
+    --grid: #2c2c2a; --axis: #383835;
+    --series-1: #3987e5; --series-2: #d95926; --neutral: #4a4a46;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--page); color: var(--text-primary);
+         font: 14px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif; }
+  main { max-width: 1120px; margin: 0 auto; padding: 20px 16px 40px; }
+  header { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; justify-content: space-between; margin-bottom: 16px; }
+  h1 { font-size: 18px; margin: 0; font-weight: 600; }
+  h2 { font-size: 14px; margin: 0 0 2px; font-weight: 600; }
+  .sub { color: var(--text-secondary); font-size: 12px; margin: 0 0 10px; }
+  form { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+  input { font: inherit; color: var(--text-primary); background: var(--surface); border: 1px solid var(--border);
+          border-radius: 6px; padding: 5px 8px; min-width: 0; }
+  input[name=server] { width: 220px; } input[name=key] { width: 130px; }
+  button { font: inherit; border: 1px solid var(--border); background: var(--surface); color: var(--text-primary);
+           border-radius: 6px; padding: 5px 10px; cursor: pointer; }
+  .status { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: var(--text-secondary); }
+  .status i { width: 8px; height: 8px; border-radius: 50%; background: var(--text-muted); display: inline-block; }
+  .status[data-state=ok] i { background: var(--good); }
+  .status[data-state=warn] i { background: var(--warning); }
+  .status[data-state=err] i { background: var(--critical); }
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 14px 16px; }
+  .tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin-bottom: 12px; }
+  .tile .label { color: var(--text-secondary); font-size: 12px; }
+  .tile .value { font-size: 26px; font-weight: 600; margin-top: 2px; }
+  .tile .note { color: var(--text-muted); font-size: 12px; }
+  .charts { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 12px; margin-bottom: 12px; }
+  .plot { position: relative; height: 180px; }
+  .plot.layers { height: 220px; }
+  svg { display: block; width: 100%; height: 100%; overflow: visible; }
+  svg text { fill: var(--text-muted); font-size: 11px; font-variant-numeric: tabular-nums; }
+  .tip { position: absolute; pointer-events: none; background: var(--surface); border: 1px solid var(--border);
+         border-radius: 6px; padding: 6px 8px; font-size: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.12);
+         white-space: nowrap; display: none; z-index: 2; }
+  .tip b { font-weight: 600; }
+  .legend { display: flex; flex-wrap: wrap; gap: 14px; font-size: 12px; color: var(--text-secondary); margin: 2px 0 8px; }
+  .legend span::before { content: ""; display: inline-block; width: 10px; height: 10px; border-radius: 2px;
+                         margin-right: 6px; vertical-align: -1px; background: var(--c); }
+  .empty { color: var(--text-secondary); padding: 24px 0; text-align: center; }
+  details { margin-top: 10px; } summary { cursor: pointer; color: var(--text-secondary); font-size: 12px; }
+  table { border-collapse: collapse; width: 100%; font-size: 12px; margin-top: 8px; font-variant-numeric: tabular-nums; }
+  th, td { text-align: right; padding: 3px 8px; border-bottom: 1px solid var(--grid); }
+  th:first-child, td:first-child { text-align: left; }
+  th { color: var(--text-secondary); font-weight: 600; }
+  .hint { color: var(--text-secondary); font-size: 12px; margin-top: 12px; }
+  code { font: 12px ui-monospace, SFMono-Regular, Consolas, monospace; }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <div>
+      <h1>MoE cache monitor</h1>
+      <span class="status" id="status" data-state="idle"><i></i><span>not connected</span></span>
+    </div>
+    <form id="conn">
+      <input name="server" aria-label="llama-server address" placeholder="http://127.0.0.1:8080">
+      <input name="key" type="password" aria-label="API key (optional)" placeholder="API key (optional)" autocomplete="off">
+      <button type="submit">Connect</button>
+    </form>
+  </header>
+
+  <section class="tiles" aria-label="Current values">
+    <div class="card tile"><div class="label">Generation speed</div><div class="value" id="t-speed">–</div><div class="note" id="n-speed">tokens/s, last interval</div></div>
+    <div class="card tile"><div class="label">Decode hit rate</div><div class="value" id="t-hit">–</div><div class="note" id="n-hit">since start: –</div></div>
+    <div class="card tile"><div class="label">Hits from the profile</div><div class="value" id="t-prof">–</div><div class="note" id="n-prof">of all hits since start</div></div>
+    <div class="card tile"><div class="label" id="l-up">Expert uploads</div><div class="value" id="t-up">–</div><div class="note" id="n-up">MiB/s, last interval</div></div>
+    <div class="card tile"><div class="label">Cache</div><div class="value" id="t-slots">–</div><div class="note" id="n-slots">expert slots</div></div>
+  </section>
+
+  <section class="charts">
+    <div class="card">
+      <h2>Decode hit rate</h2>
+      <p class="sub">Share of selected experts found in VRAM, per polling interval (%)</p>
+      <div class="plot" id="c-hit"></div>
+    </div>
+    <div class="card">
+      <h2>Generation speed</h2>
+      <p class="sub">Tokens per second while generating, per polling interval</p>
+      <div class="plot" id="c-speed"></div>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>Hits and misses per layer</h2>
+    <p class="sub">Share of each layer's expert lookups since the server started</p>
+    <div class="legend">
+      <span style="--c: var(--series-1)">hit, expert from the profile</span>
+      <span style="--c: var(--series-2)" id="l-other">hit, expert uploaded earlier</span>
+      <span style="--c: var(--neutral)" id="l-miss">miss (uploaded)</span>
+    </div>
+    <div class="plot layers" id="c-layers"></div>
+    <details><summary>Table</summary><table id="t-layers"></table></details>
+  </section>
+
+  <p class="hint" id="hint"></p>
+</main>
+
+<script>
+"use strict";
+const POLL_MS = 2000, HISTORY = 150;               // five minutes at 2 s
+const $ = (id) => document.getElementById(id);
+const params = new URLSearchParams(location.search);
+const form = $("conn");
+form.server.value = params.get("server") || "http://127.0.0.1:8080";
+
+let timer = null, prev = null, history = [], gen = 0;
+
+function parse(text) {
+  const m = {}, layers = new Map();
+  for (const line of text.split("\n")) {
+    const r = line.match(/^llamacpp:([a-z_]+)(?:\{layer="(\d+)"\})?\s+(\S+)/);
+    if (!r) continue;
+    const v = Number(r[3]);
+    if (r[2] === undefined) { m[r[1]] = v; continue; }
+    const il = Number(r[2]);
+    if (!layers.has(il)) layers.set(il, {});
+    layers.get(il)[r[1]] = v;
+  }
+  return { m, layers, t: performance.now() };
+}
+
+function setStatus(state, text) {
+  const s = $("status");
+  s.dataset.state = state;
+  s.querySelector("span").textContent = text;
+}
+
+const pct = (x) => x == null || !isFinite(x) ? "–" : (100 * x).toFixed(1) + "%";
+const num = (x, d = 1) => x == null || !isFinite(x) ? "–" : x.toFixed(d);
+
+async function poll(token) {
+  const base = form.server.value.replace(/\/+$/, "");
+  const headers = form.key.value ? { Authorization: "Bearer " + form.key.value } : {};
+  try {
+    const res = await fetch(base + "/metrics", { headers, cache: "no-store" });
+    if (token !== gen) return;
+    if (res.status === 401) return fail("warn", "needs the server's API key", "The server was started with --api-key: enter it above.");
+    if (res.status === 404 || res.status === 501) return fail("warn", "metrics are off", "Start llama-server with --metrics.");
+    if (!res.ok) return fail("err", "HTTP " + res.status, "");
+    const cur = parse(await res.text());
+    if (cur.m.moe_cache_slots === undefined) {
+      return fail("warn", "connected, no MoE cache",
+        "This server has no MoE cache: start it with --cpu-moe --moe-cache-mib N (tools/moe_plan.py prints N).");
+    }
+    setStatus("ok", "connected to " + base);
+    $("hint").textContent = "";
+    update(cur);
+  } catch (e) {
+    if (token === gen) fail("err", "cannot reach " + base,
+      "Is llama-server running there? Serve this page from localhost (python3 -m http.server), not as a file: " +
+      "llama-server only answers localhost origins by default.");
+  }
+}
+
+function fail(state, text, hint) { setStatus(state, text); $("hint").textContent = hint; }
+const hybrid = (m) => m.moe_cache_hybrid === 1;
+
+function update(cur) {
+  const m = cur.m;
+  const lookups = m.moe_cache_hits_total + m.moe_cache_misses_total;
+  let sample = { t: Date.now(), hit: null, speed: null, up: null };
+  if (prev) {
+    const dt = (cur.t - prev.t) / 1000;
+    const dh = m.moe_cache_hits_total - prev.m.moe_cache_hits_total;
+    const dm = m.moe_cache_misses_total - prev.m.moe_cache_misses_total;
+    const dtok = m.tokens_predicted_total - prev.m.tokens_predicted_total;
+    const dsec = m.tokens_predicted_seconds_total - prev.m.tokens_predicted_seconds_total;
+    sample.hit = dh + dm > 0 ? dh / (dh + dm) : null;
+    sample.speed = dsec > 0 ? dtok / dsec : null;
+    const bytesKey = hybrid(m) ? "moe_cache_cpu_bytes_total" : "moe_cache_upload_bytes_total";
+    sample.up = dt > 0 ? ((m[bytesKey] || 0) - (prev.m[bytesKey] || 0)) / 1048576 / dt : null;
+  }
+  prev = cur;
+  history.push(sample);
+  if (history.length > HISTORY) history.shift();
+
+  $("t-speed").textContent = sample.speed == null ? "idle" : num(sample.speed);
+  $("t-hit").textContent = pct(sample.hit);
+  $("n-hit").textContent = "since start: " + pct(lookups > 0 ? m.moe_cache_hits_total / lookups : null);
+  $("t-prof").textContent = m.moe_cache_prefilled > 0 ? pct(m.moe_cache_hits_total > 0 ? m.moe_cache_hits_profile_total / m.moe_cache_hits_total : null) : "no profile";
+  $("n-prof").textContent = m.moe_cache_prefilled > 0 ? `of all hits; ${m.moe_cache_prefilled} experts prefilled` : "start with --moe-cache-profile";
+  // the hybrid computes misses on the CPU: its byte counter is the CPU's expert reads, not uploads
+  const hy = hybrid(m);
+  $("l-up").textContent = hy ? "CPU expert reads" : "Expert uploads";
+  $("l-miss").textContent = hy ? "miss (computed on the CPU)" : "miss (uploaded)";
+  $("l-other").style.display = hy ? "none" : "";
+  $("t-up").textContent = num(sample.up);
+  $("n-up").textContent = `MiB/s, last interval · ${num((hy ? m.moe_cache_cpu_bytes_total : m.moe_cache_upload_bytes_total) / 1073741824, 2)} GiB in total`;
+  $("t-slots").textContent = String(m.moe_cache_slots);
+  $("n-slots").textContent = `expert slots · ${num(m.moe_cache_bytes / 1048576, 0)} MiB of VRAM`;
+
+  last = cur;
+  draw();
+}
+
+let last = null;
+function draw() {
+  if (!last) return;
+  lineChart($("c-hit"), history, "hit", { max: 1, fmt: (v) => Math.round(v * 100) + "%", label: "hit rate", tip: pct });
+  const max = niceMax(Math.max(1, ...history.map((s) => s.speed || 0)));
+  lineChart($("c-speed"), history, "speed", { max, fmt: (v) => max < 10 ? v.toFixed(1) : String(Math.round(v)), label: "tokens/s", tip: (v) => num(v) });
+  layerChart($("c-layers"), last.layers);
+}
+new ResizeObserver(() => draw()).observe(document.querySelector("main"));
+
+// an axis top that is 4 round steps (1, 2 or 5 times a power of ten each), so every gridline has a round label
+function niceMax(v) {
+  const raw = v / 4, p = Math.pow(10, Math.floor(Math.log10(raw)));
+  const step = [1, 2, 5, 10].map((f) => f * p).find((s) => s >= raw);
+  return 4 * step;
+}
+
+const NS = "http://www.w3.org/2000/svg";
+function el(name, attrs, parent) {
+  const e = document.createElementNS(NS, name);
+  for (const [k, v] of Object.entries(attrs)) e.setAttribute(k, v);
+  if (parent) parent.appendChild(e);
+  return e;
+}
+
+// one series per chart: a 2 px line, gaps where an interval had no data, a crosshair tooltip
+function lineChart(box, data, key, o) {
+  const W = box.clientWidth, H = box.clientHeight, L = 40, R = 8, T = 8, B = 20;
+  if (W < 120) return;                              // hidden or not laid out yet: the ResizeObserver redraws
+  box.innerHTML = "";
+  const svg = el("svg", { viewBox: `0 0 ${W} ${H}`, role: "img", "aria-label": o.label + " over the last five minutes" }, box);
+  const x = (i) => L + (W - L - R) * (HISTORY === 1 ? 0 : i / (HISTORY - 1));
+  const y = (v) => T + (H - T - B) * (1 - v / o.max);
+  for (const f of [0, 0.25, 0.5, 0.75, 1]) {
+    el("line", { x1: L, x2: W - R, y1: y(f * o.max), y2: y(f * o.max), stroke: f === 0 ? "var(--axis)" : "var(--grid)", "stroke-width": 1 }, svg);
+    el("text", { x: L - 6, y: y(f * o.max) + 4, "text-anchor": "end" }, svg).textContent = o.fmt(f * o.max);
+  }
+  el("text", { x: W - R, y: H - 4, "text-anchor": "end" }, svg).textContent = "now";
+  el("text", { x: L, y: H - 4 }, svg).textContent = "−5 min";
+  const off = HISTORY - data.length;
+  let d = "", pen = false;
+  data.forEach((s, i) => {
+    if (s[key] == null) { pen = false; return; }
+    d += (pen ? "L" : "M") + x(off + i).toFixed(1) + "," + y(Math.min(s[key], o.max)).toFixed(1);
+    pen = true;
+  });
+  if (d) el("path", { d, fill: "none", stroke: "var(--series-1)", "stroke-width": 2, "stroke-linejoin": "round", "stroke-linecap": "round" }, svg);
+  else el("text", { x: (L + W - R) / 2, y: H / 2, "text-anchor": "middle" }, svg).textContent = "waiting for generated tokens";
+
+  const tip = document.createElement("div");
+  tip.className = "tip";
+  box.appendChild(tip);
+  const cross = el("line", { y1: T, y2: H - B, stroke: "var(--axis)", "stroke-width": 1, visibility: "hidden" }, svg);
+  const dot = el("circle", { r: 4, fill: "var(--series-1)", stroke: "var(--surface)", "stroke-width": 2, visibility: "hidden" }, svg);
+  svg.addEventListener("pointermove", (ev) => {
+    const r = svg.getBoundingClientRect();
+    const i = Math.round(((ev.clientX - r.left) - L) / (W - L - R) * (HISTORY - 1)) - off;
+    const s = data[Math.max(0, Math.min(data.length - 1, i))];
+    if (!s) return;
+    const xi = x(off + data.indexOf(s));
+    cross.setAttribute("x1", xi); cross.setAttribute("x2", xi); cross.setAttribute("visibility", "visible");
+    if (s[key] != null) {
+      dot.setAttribute("cx", xi); dot.setAttribute("cy", y(Math.min(s[key], o.max))); dot.setAttribute("visibility", "visible");
+    } else dot.setAttribute("visibility", "hidden");
+    const ago = Math.round((Date.now() - s.t) / 1000);
+    tip.innerHTML = `<b>${s[key] == null ? "no data" : o.tip(s[key])}</b> ${o.label}<br>${ago} s ago`;
+    tip.style.display = "block";
+    tip.style.left = Math.min(xi + 10, W - tip.offsetWidth) + "px";
+    tip.style.top = "4px";
+  });
+  svg.addEventListener("pointerleave", () => {
+    tip.style.display = "none"; cross.setAttribute("visibility", "hidden"); dot.setAttribute("visibility", "hidden");
+  });
+}
+
+// a 100% stacked bar per layer: profile hits, other hits, misses; 2 px surface gaps; a tooltip per bar
+function layerChart(box, layers) {
+  const W = box.clientWidth, H = box.clientHeight, L = 40, R = 8, T = 8, B = 20;
+  if (W < 120) return;
+  box.innerHTML = "";
+  const rows = [...layers.entries()].sort((a, b) => a[0] - b[0]).map(([il, v]) => {
+    const hit = v.moe_cache_layer_hits_total || 0, prof = v.moe_cache_layer_hits_profile_total || 0;
+    const miss = v.moe_cache_layer_misses_total || 0;
+    return { il, prof, other: hit - prof, miss, n: hit + miss };
+  });
+  table(rows);
+  if (!rows.some((r) => r.n > 0)) { box.innerHTML = '<div class="empty">No lookups yet: generate a few tokens.</div>'; return; }
+  const svg = el("svg", { viewBox: `0 0 ${W} ${H}`, role: "img", "aria-label": "hit and miss shares per layer" }, box);
+  const y = (f) => T + (H - T - B) * (1 - f);
+  for (const f of [0, 0.5, 1]) {
+    el("line", { x1: L, x2: W - R, y1: y(f), y2: y(f), stroke: f === 0 ? "var(--axis)" : "var(--grid)", "stroke-width": 1 }, svg);
+    el("text", { x: L - 6, y: y(f) + 4, "text-anchor": "end" }, svg).textContent = f * 100 + "%";
+  }
+  const slot = (W - L - R) / rows.length, bw = Math.max(2, Math.min(28, slot - 2));
+  const tip = document.createElement("div");
+  tip.className = "tip";
+  box.appendChild(tip);
+  const every = Math.ceil(rows.length / Math.floor((W - L - R) / 28));
+  rows.forEach((r, i) => {
+    const x0 = L + i * slot + (slot - bw) / 2;
+    const g = el("g", {}, svg);
+    let acc = 0;
+    const segs = [["prof", "var(--series-1)"], ["other", "var(--series-2)"], ["miss", "var(--neutral)"]];
+    segs.forEach(([k, c], j) => {
+      if (r.n === 0 || r[k] <= 0) return;
+      const f = r[k] / r.n, gap = acc > 0 ? 2 : 0;   // the 2 px surface gap between stacked segments
+      const top = y(acc + f), bottom = y(acc) - gap;
+      if (bottom - top > 0.5) el("rect", { x: x0, y: top, width: bw, height: bottom - top, rx: j === segs.length - 1 || acc + f >= 0.999 ? 2 : 0, fill: c }, g);
+      acc += f;
+    });
+    el("rect", { x: L + i * slot, y: T, width: slot, height: H - T - B, fill: "transparent" }, g);   // hit target
+    if (i % every === 0) el("text", { x: x0 + bw / 2, y: H - 4, "text-anchor": "middle" }, svg).textContent = r.il;
+    g.addEventListener("pointerenter", () => {
+      tip.innerHTML = `<b>layer ${r.il}</b> · ${r.n} lookups<br>${pct(r.n ? (r.prof + r.other) / r.n : null)} hit ` +
+        `(${r.prof} from the profile, ${r.other} uploaded earlier)<br>${r.miss} missed`;
+      tip.style.display = "block";
+      tip.style.left = Math.min(x0 + bw + 6, W - tip.offsetWidth) + "px";
+      tip.style.top = "4px";
+    });
+    g.addEventListener("pointerleave", () => { tip.style.display = "none"; });
+  });
+}
+
+function table(rows) {
+  const t = $("t-layers");
+  t.innerHTML = "<tr><th>layer</th><th>lookups</th><th>hit rate</th><th>from profile</th><th>uploaded earlier</th><th>misses</th></tr>" +
+    rows.map((r) => `<tr><td>${r.il}</td><td>${r.n}</td><td>${pct(r.n ? (r.prof + r.other) / r.n : null)}</td>` +
+      `<td>${r.prof}</td><td>${r.other}</td><td>${r.miss}</td></tr>`).join("");
+}
+
+function start() {
+  gen++; prev = null; history = [];
+  clearInterval(timer);
+  setStatus("idle", "connecting…");
+  const token = gen;
+  poll(token);
+  timer = setInterval(() => poll(token), POLL_MS);
+}
+form.addEventListener("submit", (e) => { e.preventDefault(); start(); });
+start();
+</script>
+</body>
+</html>

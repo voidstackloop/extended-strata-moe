@@ -1,0 +1,56 @@
+name: Benchmark report
+description: Share your numbers - the hybrid against the layer split on your GPU. The most useful contribution right now.
+labels: [benchmark]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Run `tools/bench_cache.py` with `--hybrid -t ...` at a few thread counts (it interleaves the rounds, so the
+        configs see the same thermal state), and paste its table. The planner's output tells which `--n-cpu-moe`
+        matches your cache size.
+  - type: input
+    id: model
+    attributes:
+      label: Model and quantization
+      placeholder: gpt-oss-120b MXFP4
+    validations:
+      required: true
+  - type: input
+    id: hardware
+    attributes:
+      label: GPU (VRAM, PCIe), CPU, RAM (type, speed)
+      placeholder: RTX 4090 24 GB PCIe 4.0 x16, Ryzen 9 7950X, 64 GB DDR5-6000
+    validations:
+      required: true
+  - type: dropdown
+    id: os
+    attributes:
+      label: OS
+      options: [Linux, WSL2, Windows, macOS, other]
+    validations:
+      required: true
+  - type: textarea
+    id: plan
+    attributes:
+      label: tools/moe_plan.py output
+      render: text
+    validations:
+      required: true
+  - type: textarea
+    id: bench
+    attributes:
+      label: tools/bench_cache.py table
+      render: markdown
+    validations:
+      required: true
+  - type: textarea
+    id: trace
+    attributes:
+      label: What text the profile was traced on
+      description: Kind and size (e.g. 8k tokens of my Python code); and what text the benchmark ran on.
+  - type: textarea
+    id: audit
+    attributes:
+      label: Audit log (optional)
+      description: The `load` record of `--moe-cache-audit`.
+      render: json

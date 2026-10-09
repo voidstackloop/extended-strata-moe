@@ -1,0 +1,44 @@
+name: ci
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  planner:
+    name: planner unit tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -r requirements.txt
+      - run: python tools/test_moe_plan.py
+
+  patch:
+    name: patch applies, builds, and the tools run on every MoE architecture (CPU)
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: sudo apt-get update && sudo apt-get install -y ninja-build
+      - name: llama.cpp at patches/BASE + the patch, CPU build; Python tools; tracer
+        run: GGML_CUDA=OFF bash scripts/setup.sh
+      - name: the planner's profile = what llama.cpp's reader reads
+        run: .venv/bin/python tools/test_moe_plan.py
+      - name: trace -> plan -> profile, end to end
+        run: bash tools/e2e_tiny.sh
+      - name: tracer + planner on every MoE architecture
+        run: |
+          mkdir -p build/archs
+          llama.cpp/build/bin/test-llama-archs -a . -o build/archs > /dev/null 2>&1
+          .venv/bin/python tools/arch_matrix.py build/archs --out build/archs/matrix.md
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: arch-matrix
+          path: build/archs/matrix.md

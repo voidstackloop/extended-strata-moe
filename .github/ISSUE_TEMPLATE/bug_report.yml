@@ -1,0 +1,51 @@
+name: Bug report
+description: Something is wrong, crashes, or gives different output than expected
+labels: [bug]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened
+      description: What you ran, what you expected, what you got.
+    validations:
+      required: true
+  - type: textarea
+    id: command
+    attributes:
+      label: Command line
+      render: shell
+    validations:
+      required: true
+  - type: input
+    id: model
+    attributes:
+      label: Model and quantization
+      placeholder: gpt-oss-120b MXFP4 (ggml-org/gpt-oss-120b-GGUF)
+    validations:
+      required: true
+  - type: input
+    id: hardware
+    attributes:
+      label: GPU (VRAM), CPU, RAM
+      placeholder: RTX 4060 Laptop 8 GB, i7-13620H, 96 GB DDR5-5200
+    validations:
+      required: true
+  - type: dropdown
+    id: os
+    attributes:
+      label: OS
+      options: [Linux, WSL2, Windows, macOS, other]
+    validations:
+      required: true
+  - type: textarea
+    id: audit
+    attributes:
+      label: Audit log
+      description: Run with `--moe-cache-audit run.jsonl` and paste the file (or its `load` record). It names the exact model, flags, profile and resident experts.
+      render: json
+  - type: textarea
+    id: log
+    attributes:
+      label: llama.cpp log
+      description: The lines around the error; with `-v` for the MoE cache's load and exit lines.
+      render: text
