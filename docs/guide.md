@@ -35,14 +35,14 @@ From a MoE GGUF to a measured, tuned setup. The [README](../README.md) has the s
 ## Install
 
 ```bash
-git clone https://github.com/<you>/strata-moe && cd strata-moe
+git clone https://github.com/<you>/extended-strata-moe && cd extended-strata-moe
 bash scripts/setup.sh
 ```
 
 `scripts/setup.sh`:
 
 1. clones llama.cpp into `./llama.cpp` (or uses `$LLAMA_DIR`), checks out the pinned commit in `patches/BASE` on a
-   branch `strata-moe`, and applies `patches/llama.cpp-strata-moe.patch`;
+   branch `extended-strata-moe`, and applies `patches/llama.cpp-extended-strata-moe.patch`;
 2. builds llama-server, llama-completion, llama-cli, llama-perplexity and test-llama-archs, with CUDA when `nvcc`
    is on the PATH;
 3. creates `.venv` with the Python tools' two dependencies (`gguf`, `numpy`);
@@ -69,8 +69,8 @@ an issue with what you find.
 ```powershell
 git clone https://github.com/ggml-org/llama.cpp
 cd llama.cpp
-git checkout -b strata-moe (Get-Content ..\strata-moe\patches\BASE)
-git apply ..\strata-moe\patches\llama.cpp-strata-moe.patch
+git checkout -b extended-strata-moe (Get-Content ..\extended-strata-moe\patches\BASE)
+git apply ..\extended-strata-moe\patches\llama.cpp-extended-strata-moe.patch
 cmake -B build -DGGML_CUDA=ON
 cmake --build build --config Release -j
 ```
@@ -78,7 +78,7 @@ cmake --build build --config Release -j
 The binaries land in `build\bin\Release`. For the Python tools:
 
 ```powershell
-cd ..\strata-moe
+cd ..\extended-strata-moe
 py -m venv .venv
 .venv\Scripts\pip install -r requirements.txt
 cmake -S tools\routing_trace -B build -DLLAMA_DIR=..\llama.cpp

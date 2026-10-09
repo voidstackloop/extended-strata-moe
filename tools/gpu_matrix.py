@@ -1,6 +1,6 @@
 """tools/gpu_matrix.py - llama.cpp's own correctness test, per MoE architecture, with the experts in RAM and the MoE cache.
 
-Runs `test-llama-archs -a ^ARCH$ --all-host-experts -b CUDA0` (the strata-moe branch) once per architecture, so one
+Runs `test-llama-archs -a ^ARCH$ --all-host-experts -b CUDA0` (the extended-strata-moe branch) once per architecture, so one
 crash cannot hide the others.  Each run compares with the CPU's logits (NMSE <= 1e-4, a save/load round trip, a mixed
 batch) these configs: the GPU alone, the experts in RAM ("Host experts"), the MoE cache, the cache filled from a
 profile, and a cache that holds every expert from a profile (nothing uploaded after the load: every expert the GPU

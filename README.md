@@ -1,11 +1,14 @@
-# strata-moe
+# extended-strata-moe
 
 **Run big Mixture-of-Experts models on a small GPU: the experts your text actually uses live in VRAM, and the CPU
 computes the rest from RAM in the same step.**
 
-[Strata](https://github.com/Niko1221/Strata)'s expert tiering, rebuilt as a patch to [llama.cpp](https://github.com/ggml-org/llama.cpp)
-so it works for **every MoE model llama.cpp runs**: gpt-oss-120b, GLM-5.2, DeepSeek V3/V4, Kimi, Qwen3 MoE,
-Qwen3-Next, Llama 4, MiniMax and 45 more architectures.
+> **An extension of [Strata](https://github.com/Niko1221/Strata) by [Niko1221](https://github.com/Niko1221).**
+> Strata runs one 125B MoE model on a 12 GB gaming GPU with a profiled tier of experts in VRAM while the CPU
+> computes the rest. Its engine is built for that one model. extended-strata-moe brings the same idea to **every MoE
+> model [llama.cpp](https://github.com/ggml-org/llama.cpp) runs**, as a llama.cpp patch: gpt-oss-120b, GLM-5.2,
+> DeepSeek V3/V4, Kimi, Qwen3 MoE, Qwen3-Next, Llama 4, MiniMax and 45 more architectures.
+> [What comes from Strata](#relation-to-strata).
 
 ![license](https://img.shields.io/badge/license-MIT-blue)
 ![llama.cpp](https://img.shields.io/badge/llama.cpp-de7fa0a%20%2B%20patch-orange)
@@ -26,7 +29,7 @@ be somewhere fast. On a consumer GPU most of them end up in RAM. llama.cpp's usu
 experts of whole layers go to the GPU and the rest stay on the CPU.
 
 Routing is not uniform, though. For a given kind of text, a small set of experts takes most of the traffic: on
-gpt-oss-20b, the hottest 51% of the experts served 80% of the routings on held-out text. strata-moe:
+gpt-oss-20b, the hottest 51% of the experts served 80% of the routings on held-out text. extended-strata-moe:
 
 1. **traces** which experts your text routes to (a few minutes on the CPU);
 2. **ranks** every (layer, expert) pair and fills the VRAM you can spare with the hottest ones;
@@ -78,7 +81,7 @@ Linux or WSL2, with the CUDA toolkit for a GPU build (`nvcc` on the PATH), CMake
 (tested with 3.12) and git.
 
 ```bash
-git clone https://github.com/<you>/strata-moe && cd strata-moe
+git clone https://github.com/<you>/extended-strata-moe && cd extended-strata-moe
 bash scripts/setup.sh          # llama.cpp at a pinned commit + the patch, built; Python tools; the tracer
 ```
 
@@ -191,7 +194,7 @@ CPU, not over PCIe).
 
 ### Compared with what llama.cpp has
 
-| | `--n-cpu-moe N` | upstream `--moe-cache-mib` | strata-moe `--moe-cache-hybrid` |
+| | `--n-cpu-moe N` | upstream `--moe-cache-mib` | extended-strata-moe `--moe-cache-hybrid` |
 |---|---|---|---|
 | what is in VRAM | every expert of the last layers | the most recently used experts | the experts your text uses most, from a profile |
 | a miss | computed on the CPU | uploaded over PCIe, then the GPU | computed on the CPU |
@@ -272,10 +275,29 @@ on the GPU) is enabled for CUDA and ROCm; ROCm is untested. Other backends use a
 Benchmarks from other GPUs are the most useful contribution right now: there is an issue template for them.
 [CONTRIBUTING.md](CONTRIBUTING.md) explains the checks (`tools/check_all.sh`) and how the patch is maintained.
 
+## Relation to Strata
+
+[Strata](https://github.com/Niko1221/Strata), by Niko1221, is where the idea comes from. It is an inference engine
+for one model, Qwen3.8-Flash-Next (125B, 48 layers x 512 experts), on a 12 GB GPU, with hand-written kernels for
+that architecture. extended-strata-moe takes Strata's design to every MoE model llama.cpp loads:
+
+| Strata | in extended-strata-moe |
+|---|---|
+| a tier of experts in VRAM, ranked by measured routing frequency | yes: `tools/moe_plan.py` + `--moe-cache-profile` |
+| the CPU computes the experts the tier misses, in place; a miss never waits for PCIe | yes: `--moe-cache-hybrid` |
+| the `STRP` profile and `--dump-routing` trace formats | yes, the same formats (`tools/routing_trace` writes Strata's trace layout) |
+| CPU and GPU expert work overlapped | not yet (the roadmap's main item) |
+| adaptive swaps by routing heat during a chat | not yet |
+| speculative decoding from the model's MTP head; expert streaming on the prompt path | no (llama.cpp has its own speculative decoding) |
+
+No Strata code is included: Strata's engine is built around its one model's geometry, so this project builds on
+llama.cpp's MoE cache instead ([ADR-001](docs/ADR-001-generic-moe-expert-tiering.md) explains the choice). If you
+run Strata's model, use Strata.
+
 ## Credits
 
-- [Strata](https://github.com/Niko1221/Strata) by Niko1221: the expert-tiering design, the `STRP` profile and the
-  routing-trace formats.
+- [Strata](https://github.com/Niko1221/Strata) by [Niko1221](https://github.com/Niko1221): the expert-tiering
+  design, and the `STRP` profile and routing-trace formats.
 - [llama.cpp](https://github.com/ggml-org/llama.cpp): the engine, its MoE cache (`--moe-cache-mib`) and its test
   suite.
 

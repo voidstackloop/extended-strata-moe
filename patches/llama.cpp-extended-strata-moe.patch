@@ -12,7 +12,7 @@ index 2b307c5..5a06ee1 100644
  if (LLAMA_LLGUIDANCE)
      include(ExternalProject)
 diff --git a/common/arg.cpp b/common/arg.cpp
-index 9efcf79..aedd57d 100644
+index 9efcf79..59b9bb2 100644
 --- a/common/arg.cpp
 +++ b/common/arg.cpp
 @@ -899,6 +899,11 @@ static bool common_params_parse_ex(int argc, char ** argv, common_params_context
@@ -33,7 +33,7 @@ index 9efcf79..aedd57d 100644
      ).set_env("LLAMA_ARG_MOE_CACHE_MIB"));
 +    add_opt(common_arg(
 +        {"--moe-cache-profile"}, "FNAME",
-+        "expert profile (Strata STRP, e.g. from strata-moe's tools/moe_plan.py) to fill the MoE cache from at load, hottest experts first (default: start empty)",
++        "expert profile (Strata STRP, e.g. from extended-strata-moe's tools/moe_plan.py) to fill the MoE cache from at load, hottest experts first (default: start empty)",
 +        [](common_params & params, const std::string & value) {
 +            params.moe_cache_profile = value;
 +        }

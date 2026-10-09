@@ -2,4 +2,4 @@ blank_issues_enabled: true
 contact_links:
   - name: llama.cpp itself
     url: https://github.com/ggml-org/llama.cpp/issues
-    about: Problems that happen without strata-moe's flags belong to llama.cpp.
+    about: Problems that happen without extended-strata-moe's flags belong to llama.cpp.

@@ -1,5 +1,5 @@
 #!/bin/bash
-# tools/build_cuda.sh - the strata-moe branch of llama.cpp with CUDA, from the user-local toolkit (~/cuda-13.4, no root).
+# tools/build_cuda.sh - the extended-strata-moe branch of llama.cpp with CUDA, from the user-local toolkit (~/cuda-13.4, no root).
 #   CUDA_ARCH=89 tools/build_cuda.sh [targets...]     (default: test-llama-archs llama-cli llama-server)
 set -e
 CUDA=${CUDA:-$HOME/cuda-13.4}

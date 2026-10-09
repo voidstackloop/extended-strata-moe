@@ -1,6 +1,6 @@
 """tools/check_slots.py - the planner's cache arithmetic against llama.cpp's own, on a GPU.
 
-For a range of --moe-cache-mib sizes, runs llama-completion (the strata-moe branch, CUDA) on MODEL with the experts
+For a range of --moe-cache-mib sizes, runs llama-completion (the extended-strata-moe branch, CUDA) on MODEL with the experts
 in RAM and compares what llama.cpp logs - the slots of every cache group, a refused cache below the minimum, the
 experts a profile prefills - with what tools/moe_plan.py predicts.  Exit 1 on any difference.
 

@@ -2,7 +2,8 @@
 
 ## 0.1.0 - unreleased
 
-First public version. llama.cpp `de7fa0a` + `patches/llama.cpp-strata-moe.patch`.
+First public version: [Strata](https://github.com/Niko1221/Strata)'s expert tiering for every llama.cpp MoE model.
+llama.cpp `de7fa0a` + `patches/llama.cpp-extended-strata-moe.patch`.
 
 **llama.cpp**
 

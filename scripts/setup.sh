@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# scripts/setup.sh - llama.cpp with the strata-moe patch, the Python tools and the routing tracer (Linux, WSL, macOS).
+# scripts/setup.sh - llama.cpp with the extended-strata-moe patch, the Python tools and the routing tracer (Linux, WSL, macOS).
 #
 #   bash scripts/setup.sh                  # CUDA if nvcc is on the PATH, else CPU only
 #
@@ -10,12 +10,12 @@ set -euo pipefail
 REPO=$(cd "$(dirname "$0")/.." && pwd)
 LLAMA_DIR=${LLAMA_DIR:-$REPO/llama.cpp}
 BASE=$(cat "$REPO/patches/BASE")
-PATCH=$REPO/patches/llama.cpp-strata-moe.patch
+PATCH=$REPO/patches/llama.cpp-extended-strata-moe.patch
 JOBS=${JOBS:-$(getconf _NPROCESSORS_ONLN)}
 GEN=()
 command -v ninja > /dev/null && GEN=(-G Ninja)
 
-echo "== llama.cpp at ${BASE:0:7} + the strata-moe patch: $LLAMA_DIR"
+echo "== llama.cpp at ${BASE:0:7} + the extended-strata-moe patch: $LLAMA_DIR"
 if [ ! -d "$LLAMA_DIR/.git" ]; then
     git clone --filter=blob:none https://github.com/ggml-org/llama.cpp "$LLAMA_DIR"
 fi
@@ -24,7 +24,7 @@ if git apply --reverse --check "$PATCH" 2> /dev/null; then
     echo "the patch is applied already"
 else
     # stops here if the checkout has changes of its own: commit or stash them first
-    git checkout -B strata-moe "$BASE"
+    git checkout -B extended-strata-moe "$BASE"
     git apply "$PATCH"
 fi
 

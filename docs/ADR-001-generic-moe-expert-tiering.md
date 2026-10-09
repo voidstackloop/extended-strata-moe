@@ -175,7 +175,7 @@ between tokens, not inside the layer. Save the learned ranking back as a profile
 1. [x] `tools/moe_plan.py` + self-test: any MoE GGUF (split files too) -> slots as llama.cpp computes them, the `STRP`
    profile and the flags.
 2. [x] `tools/routing_trace`: llama.cpp eval-callback tracer (CPU build).
-3. [x] `--moe-cache-profile` on the `strata-moe` branch of llama.cpp + a cross-language test of the profile reader.
+3. [x] `--moe-cache-profile` on the `extended-strata-moe` branch of llama.cpp + a cross-language test of the profile reader.
 4. [x] Tracer + planner on all 56 MoE architectures (`tools/arch_matrix.py`).
 5. [x] CUDA 13.4 toolkit in WSL, user-local (`~/cuda-13.4`, NVIDIA redist archives, no root).
 6. [ ] GPU: `test-llama-archs --all-host-experts` (the cache with and without a profile against the CPU, every MoE

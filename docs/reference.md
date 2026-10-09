@@ -1,7 +1,7 @@
 # Reference
 
-Everything strata-moe adds to llama.cpp, and the formats its tools read and write. The code is in
-`patches/llama.cpp-strata-moe.patch` (against llama.cpp `patches/BASE`) and `tools/`.
+Everything extended-strata-moe adds to llama.cpp, and the formats its tools read and write. The code is in
+`patches/llama.cpp-extended-strata-moe.patch` (against llama.cpp `patches/BASE`) and `tools/`.
 
 - [Command-line options](#command-line-options)
 - [C API](#c-api)

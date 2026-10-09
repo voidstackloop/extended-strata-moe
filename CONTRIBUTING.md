@@ -11,18 +11,18 @@ Thanks for helping. The most useful things right now:
 
 | path | |
 |---|---|
-| `patches/llama.cpp-strata-moe.patch` | every llama.cpp change, against the commit in `patches/BASE` |
+| `patches/llama.cpp-extended-strata-moe.patch` | every llama.cpp change, against the commit in `patches/BASE` |
 | `scripts/setup.sh` | clones llama.cpp, applies the patch, builds everything |
 | `tools/` | the tracer (C++), the planner, simulator, benchmark and checks (Python), the monitor (HTML) |
 | `docs/` | the guide, the reference, and the design records (ADRs) |
 
 ## Working on the llama.cpp side
 
-`scripts/setup.sh` leaves `llama.cpp/` on a branch `strata-moe` with the patch applied but not committed. Edit there,
+`scripts/setup.sh` leaves `llama.cpp/` on a branch `extended-strata-moe` with the patch applied but not committed. Edit there,
 rebuild (`cmake --build llama.cpp/build -j`), and when done regenerate the patch:
 
 ```bash
-git -C llama.cpp diff "$(cat patches/BASE)" > patches/llama.cpp-strata-moe.patch
+git -C llama.cpp diff "$(cat patches/BASE)" > patches/llama.cpp-extended-strata-moe.patch
 ```
 
 To move to a newer llama.cpp: check out the new commit in `llama.cpp/`, `git apply --3way` the patch, resolve the

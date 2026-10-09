@@ -1,4 +1,4 @@
-"""tools/llama_env.py - where the strata-moe build of llama.cpp is, and the environment to run its binaries in.
+"""tools/llama_env.py - where the extended-strata-moe build of llama.cpp is, and the environment to run its binaries in.
 
 The binaries: $LLAMA_BIN, else llama.cpp/build/bin in this repo (what scripts/setup.sh builds), else
 ~/projects/llama.cpp/build-cuda/bin (tools/build_cuda.sh).

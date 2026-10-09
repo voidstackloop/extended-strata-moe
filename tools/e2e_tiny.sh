@@ -1,7 +1,7 @@
 #!/bin/bash
 # tools/e2e_tiny.sh - trace -> plan -> profile -> llama.cpp's reader, on a tiny random qwen3moe from llama.cpp's
 # test-llama-archs (no download, CPU only).  Needs build/ (cmake -S tools/routing_trace -B build) and a
-# test-llama-archs of the strata-moe build: $LLAMA_BIN, else what tools/llama_env.py finds.
+# test-llama-archs of the extended-strata-moe build: $LLAMA_BIN, else what tools/llama_env.py finds.
 set -e
 cd "$(dirname "$0")/.."
 D=build/tiny

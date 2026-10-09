@@ -152,7 +152,7 @@ def main():
     assert mp.main([str(d / "m.gguf"), "--cache-mib", "1", "--whole-layers", "1"]) == 0
     assert mp.main([str(d / "m.gguf"), "--vram-gib", "1", "--reserve-gib", "1"]) == 1   # no room: says so, exit 1
 
-    # llama.cpp's reader (strata-moe branch) reads what this wrote; built by cmake into build/
+    # llama.cpp's reader (extended-strata-moe branch) reads what this wrote; built by cmake into build/
     reader = Path(__file__).resolve().parent.parent / "build" / "read_profile"
     if reader.exists():
         out = subprocess.run([reader, d / "p.strp", str(N_LAYERS), str(N_EXPERT)], capture_output=True, text=True, check=True)

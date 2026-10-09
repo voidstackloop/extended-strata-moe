@@ -11,7 +11,7 @@ large-expert model (see "Implementation and results" at the end)
 ADR-001 extended llama.cpp's MoE cache (`--moe-cache-mib`) with a profile warm start (`--moe-cache-profile`, done).
 It left a hybrid mode (Step 2) and heat-based replacement (Step 3) for later. Then we measured a real MoE model:
 IBM Granite 3.1 1B-A400M (Q4_K_M; 24 layers, 32 experts, top-8). The box is an RTX 4060 Laptop (8 GB, PCIe x8),
-with llama.cpp `strata-moe` at de7fa0a + our patch, CUDA 13.4.
+with llama.cpp `extended-strata-moe` at de7fa0a + our patch, CUDA 13.4.
 
 **Decode speed** (`tools/bench_cache.py`: 128 greedy tokens after a 1,500-character prompt, best of 2):
 

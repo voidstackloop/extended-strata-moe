@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.14)
 project(routing_trace CXX)
 
-# llama.cpp with the strata-moe patch: inside this repo (scripts/setup.sh), else beside it; override with -DLLAMA_DIR=...
+# llama.cpp with the extended-strata-moe patch: inside this repo (scripts/setup.sh), else beside it; override with -DLLAMA_DIR=...
 if (EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/../../llama.cpp/CMakeLists.txt")
     set(LLAMA_DIR_DEFAULT "${CMAKE_CURRENT_SOURCE_DIR}/../../llama.cpp")
 else()
