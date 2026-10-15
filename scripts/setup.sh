@@ -46,4 +46,4 @@ echo
 echo "done:"
 echo "  $LLAMA_DIR/build/bin/llama-server   (and llama-completion, llama-cli)"
 echo "  $REPO/build/routing_trace"
-echo "next: the README's 'Quick start' - trace, plan, run"
+echo "next: the README's 'Quick start' - serve.py (make_profile.py for your kind of text is optional)"

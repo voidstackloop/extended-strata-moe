@@ -152,6 +152,10 @@ parallel with the GPU's hits.
 Count routing heat per pair. Admit a miss only when its heat beats the coldest resident expert, and upload it
 between tokens, not inside the layer. Save the learned ranking back as a profile (Strata's `--expert-profile-save`).
 
+*Built (2026-10-10) as `--moe-cache-adaptive`, for the hybrid, not for upload mode: the swaps are bulk copies between
+tokens, every few dozen tokens ([ADR-002](ADR-002-cpu-misses-not-uploads.md), "The adaptive cache"). Saving the learned
+ranking as a profile is not built.*
+
 ## Phases
 
 | Phase | What | Exit criterion |

@@ -1,6 +1,7 @@
 #!/bin/bash
 # tools/build_cuda.sh - the extended-strata-moe branch of llama.cpp with CUDA, from the user-local toolkit (~/cuda-13.4, no root).
-#   CUDA_ARCH=89 tools/build_cuda.sh [targets...]     (default: test-llama-archs llama-cli llama-server)
+#   CUDA_ARCH=89 tools/build_cuda.sh [targets...]     (default: the tools scripts/setup.sh builds)
+# the tools share libllama-common: one left out of a rebuild after a common.h change crashes at argument parsing
 set -e
 CUDA=${CUDA:-$HOME/cuda-13.4}
 LLAMA=${LLAMA:-$HOME/projects/llama.cpp}
@@ -11,5 +12,5 @@ cmake -S "$LLAMA" -B "$LLAMA/build-cuda" -G Ninja -DCMAKE_BUILD_TYPE=Release \
     -DGGML_CUDA=ON -DCMAKE_CUDA_COMPILER="$CUDA/bin/nvcc" -DCUDAToolkit_ROOT="$CUDA" \
     -DCMAKE_CUDA_ARCHITECTURES="${CUDA_ARCH:-89}" -DLLAMA_BUILD_TESTS=ON -DLLAMA_CURL=OFF
 targets=("$@")
-[ ${#targets[@]} -gt 0 ] || targets=(test-llama-archs llama-cli llama-server)
+[ ${#targets[@]} -gt 0 ] || targets=(llama-server llama-completion llama-cli llama-perplexity test-llama-archs)
 cmake --build "$LLAMA/build-cuda" -j "${JOBS:-12}" --target "${targets[@]}"

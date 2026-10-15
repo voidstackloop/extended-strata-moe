@@ -7,6 +7,7 @@ config, then round r+1), because a laptop's speed drifts with its temperature by
     python tools/bench_cache.py MODEL.gguf TEXT --profile P.strp --cache-mib 64 256 [--n-cpu-moe 22 16] [-t 4 6] [-n 128] [--runs 2]
 
 Compare each config at its best thread count: on gpt-oss-20b the layer split was best at 6 threads, the hybrid at 4-6.
+--adaptive adds the adaptive hybrid, which learns as it generates: use -n 400 or more, or it is judged on its first replies.
 """
 import argparse
 import os
@@ -35,8 +36,8 @@ def run(binary, model, prompt, n, extra):
         return None, out
     tps = float(ev[-1].group(3))
     if hy:   # (hits, from profile, misses, rate, uploaded): the hybrid's misses are read by the CPU, not uploaded
-        hits, cpu, rate, mib = hy.groups()
-        return (tps, (hits, hits, cpu, rate, f"0 (CPU read {mib} MiB)")), out
+        hits, cpu, rate, mib = hy.groups()   # a static hybrid's hits all come from the profile, an adaptive one's do not
+        return (tps, (hits, None if "--moe-cache-adaptive" in extra else hits, cpu, rate, f"0 (CPU read {mib} MiB)")), out
     if st:
         hits, prof, misses, rate, up = st.groups()
         return (tps, (hits, prof, misses, rate, f"{up} MiB")), out
@@ -52,6 +53,8 @@ def main():
     ap.add_argument("--n-cpu-moe", type=int, nargs="*", default=[])
     ap.add_argument("--hybrid", action="store_true", help="also run the hybrid cache (--moe-cache-hybrid)")
     ap.add_argument("--only-hybrid", action="store_true", help="of the cache configs, run only the hybrid")
+    ap.add_argument("--adaptive", action="store_true",
+                    help="also run the adaptive hybrid (--moe-cache-adaptive), from the profile and from an empty cache")
     ap.add_argument("-t", "--threads", type=int, nargs="*", default=[],
                     help="CPU thread counts to run every config at (default: llama.cpp's own)")
     ap.add_argument("-n", type=int, default=128)
@@ -71,6 +74,9 @@ def main():
             configs += [(f"cache {mib} MiB, cold", base), (f"cache {mib} MiB, profile", base + ["--moe-cache-profile", a.profile])]
         if a.hybrid or a.only_hybrid:
             configs.append((f"hybrid {mib} MiB", base + ["--moe-cache-profile", a.profile, "--moe-cache-hybrid"]))
+        if a.adaptive:
+            configs.append((f"adaptive {mib} MiB", base + ["--moe-cache-profile", a.profile, "--moe-cache-hybrid", "--moe-cache-adaptive"]))
+            configs.append((f"adaptive {mib} MiB, no profile", base + ["--moe-cache-hybrid", "--moe-cache-adaptive"]))
     if a.threads:
         configs = [(f"{name}, -t {t}", extra + ["-t", str(t)]) for name, extra in configs for t in a.threads]
 

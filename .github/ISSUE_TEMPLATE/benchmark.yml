@@ -5,9 +5,9 @@ body:
   - type: markdown
     attributes:
       value: |
-        Run `tools/bench_cache.py` with `--hybrid -t ...` at a few thread counts (it interleaves the rounds, so the
-        configs see the same thermal state), and paste its table. The planner's output tells which `--n-cpu-moe`
-        matches your cache size.
+        Run `tools/bench_cache.py` with `--hybrid -t ...` at a few thread counts, past your fast cores too (it
+        interleaves the rounds, so the configs see the same thermal state), and paste its table. The planner's output
+        tells which `--n-cpu-moe` matches your cache size. On WSL, keep a program running so the model stays cached.
   - type: input
     id: model
     attributes:
@@ -48,6 +48,12 @@ body:
     attributes:
       label: What text the profile was traced on
       description: Kind and size (e.g. 8k tokens of my Python code); and what text the benchmark ran on.
+  - type: textarea
+    id: profile
+    attributes:
+      label: Where the time goes (optional)
+      description: The last lines of a run with `GGML_SCHED_PROFILE=1` (the CPU's compute, the GPU's, the waits), and whether the log says the layers hand over "through a mailbox".
+      render: text
   - type: textarea
     id: audit
     attributes:

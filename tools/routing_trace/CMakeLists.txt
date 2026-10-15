@@ -24,3 +24,7 @@ add_executable(read_profile read_profile.cpp)
 target_include_directories(read_profile PRIVATE ${LLAMA_DIR}/src)
 target_link_libraries(read_profile PRIVATE llama ggml)
 target_compile_features(read_profile PRIVATE cxx_std_17)
+
+add_executable(route_dump route_dump.cpp)
+target_link_libraries(route_dump PRIVATE llama ggml)
+target_compile_features(route_dump PRIVATE cxx_std_17)

@@ -27,3 +27,5 @@ $PY tools/gpu_matrix.py build/archs --quant-experts --out build/archs/gpu_matrix
 G=~/models/granite/granite-3.1-1b-a400m-instruct-Q4_K_M.gguf
 echo "== audit records (--moe-cache-audit)"
 if [ -f $G ] && [ -f build/granite/granite.strp ]; then $PY tools/check_audit.py $G build/granite/granite.strp; else echo "skipped: needs $G and build/granite/granite.strp"; fi
+echo "== OpenAI and Anthropic APIs (tools/serve.py)"
+if [ -f $G ] && [ -f build/granite/granite.strp ]; then $PY tools/check_api.py $G build/granite/granite.strp; else echo "skipped: needs $G and build/granite/granite.strp"; fi

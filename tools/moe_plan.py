@@ -315,10 +315,12 @@ def main(argv=None):
     # -fit off: llama.cpp otherwise re-fits unset parameters to free memory, around the cache it does not know about
     flags = f"-ngl 999 -fit off --cpu-moe --moe-cache-mib {cache_mib}"
     if a.out:
-        print(f"llama.cpp, hybrid (the CPU computes the experts the cache does not hold):\n"
-              f"  {flags} --moe-cache-profile {a.out} --moe-cache-hybrid")
+        print(f"llama.cpp, hybrid (the CPU computes the experts the cache does not hold; --moe-cache-adaptive lets the cache\n"
+              f"follow the conversation, and may be left out to keep the profile's set):\n"
+              f"  {flags} --moe-cache-profile {a.out} --moe-cache-hybrid --moe-cache-adaptive")
     else:
-        print(f"llama.cpp: {flags}   (the hybrid also needs a profile: give --out)")
+        print(f"llama.cpp: {flags} --moe-cache-hybrid --moe-cache-adaptive   (no profile: the cache starts empty and fills "
+              f"itself; give --out to write one)")
     n_cpu, n_gpu = layer_split(info, cache_mib * MIB)
     print(f"layer split in the same VRAM (the experts of the last {n_gpu} layers):\n  -ngl 999 -fit off --n-cpu-moe {n_cpu}")
     bad = thrashes(info)
@@ -329,7 +331,7 @@ def main(argv=None):
         print(f"note: without --moe-cache-hybrid every miss is uploaded, and {g.n_slots} slots for {len(g.layers)} layers "
               f"x top-{info.n_used} = {len(g.layers) * info.n_used} experts per token make its LRU evict each expert "
               f"before its layer comes round again: upload mode needs at least {need} MiB")
-    print("Measure them on your machine, at a few thread counts: tools/bench_cache.py --hybrid -t 4 6 8")
+    print("Measure them on your machine, at a few thread counts: tools/bench_cache.py --hybrid --adaptive -t 4 6 8 -n 400")
     return 0
 
 

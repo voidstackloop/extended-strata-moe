@@ -3,8 +3,9 @@
 Runs `test-llama-archs -a ^ARCH$ --all-host-experts -b CUDA0` (the extended-strata-moe branch) once per architecture, so one
 crash cannot hide the others.  Each run compares with the CPU's logits (NMSE <= 1e-4, a save/load round trip, a mixed
 batch) these configs: the GPU alone, the experts in RAM ("Host experts"), the MoE cache, the cache filled from a
-profile, and a cache that holds every expert from a profile (nothing uploaded after the load: every expert the GPU
-reads is one the prefill wrote).
+profile, a cache that holds every expert from a profile (nothing uploaded after the load: every expert the GPU
+reads is one the prefill wrote), and the adaptive hybrid cache (experts swapped in between chunks of tokens; the
+config fails if nothing was swapped).
 
 With --quant-experts the routed experts are Q8_0, so the one-token hybrid config takes CUDA's skip path, as in
 generation.
@@ -28,12 +29,13 @@ sys.path.insert(0, str(Path(__file__).parent))
 import llama_env
 import moe_plan as mp
 
-N_CACHE_CONFIGS = 7   # MoE cache; + profile; + full profile; hybrid, half; hybrid, full; full, 1 token; hybrid, 1 token
+N_CACHE_CONFIGS = 8   # MoE cache; + profile; + full profile; hybrid, half; hybrid, full; full, 1 token; hybrid, 1 token; adaptive
 ROW_RE = re.compile(r"^\|\s*(\S+)\s*\|\s*([^|]+?)\s*\|\s*(\S+)\s*\|(.*)$")
 ANSI_RE = re.compile(r"\x1b\[[0-9;]*m")
 # "(1.2e-05)", or a cache-only check that failed: "(3.0e-07 c)" logits not bit-identical to the cache without a
-# profile, "(2.1e-02 m)" the hybrid's first MoE layer off the cache holding every expert
-NMSE_RE = re.compile(r"\(([0-9.e+-]+|nan|inf)(?: ([cm]))?\)")
+# profile, "(2.1e-02 m)" the hybrid's first MoE layer off the cache holding every expert, "(1.0e-07 s)" the adaptive
+# cache swapped nothing
+NMSE_RE = re.compile(r"\(([0-9.e+-]+|nan|inf)(?: ([cms]))?\)")
 
 
 def cols(rest):
@@ -84,6 +86,7 @@ def main():
     ap.add_argument("dir")
     ap.add_argument("--bin", default=llama_env.default_bin())
     ap.add_argument("--out")
+    ap.add_argument("--timeout", type=int, default=300, help="seconds per architecture before it counts as failed")
     ap.add_argument("--quant-experts", action="store_true",
                     help="Q8_0 routed experts: the hybrid's one-token config then takes CUDA's skip path, as in generation")
     a = ap.parse_args()
@@ -95,10 +98,13 @@ def main():
         if not mp.inspect([models[arch]]).groups:
             v = "n/a: no expert tensors (a dense model)"
         else:
-            r = subprocess.run([str(Path(a.bin) / "test-llama-archs"), "-a", f"^{re.escape(arch)}$", "--all-host-experts",
-                                "-b", "CUDA0", "-s", "42"] + (["--quant-experts"] if a.quant_experts else []),
-                               capture_output=True, text=True, env=env, timeout=1800)
-            v = verdict(ANSI_RE.sub("", r.stdout + r.stderr), r.returncode)
+            try:   # a fixture takes seconds; a hang is a failure, reported at once, not a crash after half an hour
+                r = subprocess.run([str(Path(a.bin) / "test-llama-archs"), "-a", f"^{re.escape(arch)}$", "--all-host-experts",
+                                    "-b", "CUDA0", "-s", "42"] + (["--quant-experts"] if a.quant_experts else []),
+                                   capture_output=True, text=True, env=env, timeout=a.timeout)
+                v = verdict(ANSI_RE.sub("", r.stdout + r.stderr), r.returncode)
+            except subprocess.TimeoutExpired:
+                v = f"FAIL: no result in {a.timeout} s"
         if v.startswith("FAIL"):
             bad.append(arch)
         lines.append(f"| {arch} | {v} |")
