@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased: Tessera-125B-MoE "k448" support files
+
+No engine (C++) change. Added `models/k448/` (Windows start scripts for a 128K profile and a 64K + MTP profile, a patched chat template so Claude Code
+works without a proxy, a CPU expert-kernel microbenchmark and decode/prompt speed tools) and `docs/k448.md` with the measurements on an RTX 4060 Laptop:
+17.5 tok/s with a small expert cache, 20 to 22.5 with a 3.2 GB cache, 20 to 21.5 with MTP at 64K context.
+
 ## 0.1.0 - unreleased
 
 First public version: [Strata](https://github.com/Niko1221/Strata)'s expert tiering for every llama.cpp MoE model.

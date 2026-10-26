@@ -67,6 +67,15 @@ Running a 60 GB – 120 GB MoE model usually requires a $10,000+ multi-GPU serve
 | **extended-strata-moe (Cold Start, 400 tokens)** | **30.9 t/s** | **+74%** 🚀 |
 | **extended-strata-moe (Warmed Cache, 1,200 tokens)** | **37.2 t/s** | **+109% (2.1x FASTER)** 🚀 |
 
+### 3. Tessera-125B-MoE "k448" (70.5 GiB, IQ2_S/IQ4_NL, on 8 GB GPU, native Windows)
+| Configuration | Tokens / sec (short code answers) |
+|---|---:|
+| 128K context, 645 MiB expert cache (14% VRAM hits) | 17.5 t/s |
+| 128K context, 3.2 GB expert cache (52% VRAM hits, 7.9 of 8.2 GB used) | 20 to 22.5 t/s |
+| 64K context + MTP draft (`start-k448-fast.bat`) | 20 to 21.5 t/s (14.6 t/s on prose) |
+
+One run per setting, no game running; a game cut it by a third. Setup, the Claude Code chat-template fix and the raw tables: [`docs/k448.md`](docs/k448.md).
+
 > 🛡️ **Bit-Accurate Accuracy**: Verified against 53 MoE architectures in `test-llama-archs`. KL divergence versus full CPU evaluation is **< 0.002** (identical to llama.cpp's own internal GPU vs CPU rounding tolerance).
 
 ---
